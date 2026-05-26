@@ -1,39 +1,53 @@
+using RinhaBackend.Models;
+using RinhaBackend.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddSingleton<DataLoaderService>();
+builder.Services.AddSingleton<NormalizationService>();
+builder.Services.AddSingleton<VpTreeService>();
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+var dataLoader = app.Services.GetRequiredService<DataLoaderService>();
+dataLoader.LoadBinFile("Data/references.bin");
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+var vpTree = app.Services.GetRequiredService<VpTreeService>();
 
-app.MapGet("/weatherforecast", () =>
+int raizId = vpTree.CreateTree(0, dataLoader.Dataset.Length - 1);
+
+app.MapGet("/ready", () => Results.Ok());
+
+
+
+app.MapPost("/fraud-score", (FraudScoreRequest payload, NormalizationService normalizer, VpTreeService vpTree) =>
 {
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    try
+    {
+        sbyte[] vetorNormalizado = normalizer.NormalizePayload(payload);
+
+        var vizinhos = vpTree.Search(vetorNormalizado, k: 5);
+
+        int numeroDeFraudes = vizinhos.Count(v => v.IsFraud);
+
+        double fraudScore = numeroDeFraudes / 5.0;
+
+        bool approved = fraudScore < 0.6;
+
+        return Results.Ok(new
+        {
+            approved = approved,
+            fraud_score = fraudScore
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Erro no processamento do score: {ex.Message}");
+    }
+});
 
 app.Run();
-
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
