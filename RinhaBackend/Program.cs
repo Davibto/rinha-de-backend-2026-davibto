@@ -3,6 +3,7 @@ using RinhaBackend.Models;
 using RinhaBackend.Services;
 
 var builder = WebApplication.CreateSlimBuilder(args);
+builder.Logging.ClearProviders();
 builder.Services.AddSingleton<DataLoaderService>();
 builder.Services.AddSingleton<NormalizationService>();
 builder.Services.AddSingleton<VpTreeService>();
@@ -18,8 +19,7 @@ dataLoader.LoadBinFile("Data/references.bin");
 
 var vpTree = app.Services.GetRequiredService<VpTreeService>();
 
-int raizId = vpTree.CreateTree(0, dataLoader.Dataset.Length - 1);
-
+int raizId = vpTree.Build();
 app.MapGet("/ready", () => Results.Ok());
 
 

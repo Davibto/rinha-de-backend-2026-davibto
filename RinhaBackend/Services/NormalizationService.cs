@@ -14,7 +14,7 @@ namespace RinhaBackend.Services
 
         public sbyte[] NormalizePayload(FraudScoreRequest payload)
         {
-            sbyte[] v = new sbyte[16];
+            sbyte[] v = new sbyte[14];
             sbyte Q(float val) => (sbyte)Math.Round(val * 127f);
 
             // 0: amount

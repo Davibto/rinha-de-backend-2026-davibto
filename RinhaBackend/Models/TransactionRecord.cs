@@ -2,14 +2,14 @@
 
 namespace RinhaBackend.Models;
 
-[InlineArray(16)]
-public struct Vector16
+[InlineArray(14)]
+public struct Vector14
 {
     public sbyte Element0;
 }
 
 public struct TransactionRecord
 {
-    public Vector16 Vector;
+    public Vector14 Vector;
     public bool IsFraud { get; set; }
 }
