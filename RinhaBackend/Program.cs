@@ -1,14 +1,14 @@
+using RinhaBackend;           
 using RinhaBackend.Models;
 using RinhaBackend.Services;
 
-var builder = WebApplication.CreateBuilder(args);
-
+var builder = WebApplication.CreateSlimBuilder(args);
 builder.Services.AddSingleton<DataLoaderService>();
 builder.Services.AddSingleton<NormalizationService>();
 builder.Services.AddSingleton<VpTreeService>();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, RinhaJsonContext.Default);
 });
 
 var app = builder.Build();
@@ -38,11 +38,7 @@ app.MapPost("/fraud-score", (FraudScoreRequest payload, NormalizationService nor
 
         bool approved = fraudScore < 0.6;
 
-        return Results.Ok(new
-        {
-            approved = approved,
-            fraud_score = fraudScore
-        });
+        return Results.Ok(new FraudScoreResponse(approved, fraudScore));
     }
     catch (Exception ex)
     {
