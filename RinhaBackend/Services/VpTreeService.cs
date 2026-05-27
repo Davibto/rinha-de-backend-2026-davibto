@@ -1,5 +1,7 @@
-﻿
-using RinhaBackend.Models;
+﻿using RinhaBackend.Models;
+using System.Runtime.Intrinsics;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace RinhaBackend.Services
 {
@@ -45,7 +47,6 @@ namespace RinhaBackend.Services
             int middleIndex = start + meioDaLista;
             float threshold = _distanciasBuffer[middleIndex]; 
 
- 
             int currentNodeId = _nextNodeId++;
             int idEsquerda = CreateTree(start, middleIndex - 1);
             int idDireita = CreateTree(middleIndex, end - 1);
@@ -116,15 +117,29 @@ namespace RinhaBackend.Services
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private float CalcularDistancia(ReadOnlySpan<sbyte> a, ReadOnlySpan<sbyte> b)
         {
-            float soma = 0f;
-            for (int i = 0; i < 14; i++)
-            {
-                float diff = a[i] - b[i];
-                soma += (diff * diff);
-            }
-            return (float)Math.Sqrt(soma);
+            var va = Vector128.LoadUnsafe(ref MemoryMarshal.GetReference(a));
+            var vb = Vector128.LoadUnsafe(ref MemoryMarshal.GetReference(b));
+
+            var (aLow, aHigh) = Vector128.Widen(va);
+            var (bLow, bHigh) = Vector128.Widen(vb);
+
+            var diffLow = aLow - bLow;
+            var diffHigh = aHigh - bHigh;
+
+            var (dLL, dLH) = Vector128.Widen(diffLow);
+            var (dHL, dHH) = Vector128.Widen(diffHigh);
+
+            var sqLL = dLL * dLL;
+            var sqLH = dLH * dLH;
+            var sqHL = dHL * dHL;
+            var sqHH = dHH * dHH;
+
+            var sum = sqLL + sqLH + sqHL + sqHH;
+
+            return (float)Math.Sqrt(Vector128.Sum(sum));
         }
     }
 }
